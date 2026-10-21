@@ -79,21 +79,25 @@ test.describe("@a11y chart command palette", () => {
     await expect(input).toHaveAttribute("aria-autocomplete", "list");
 
     const listbox = palette.getByRole("listbox", { name: "Results" });
-    await expect(listbox).toBeVisible();
-
     const controls = await input.getAttribute("aria-controls");
+
     expect(controls).toBeTruthy();
     await expect(listbox).toHaveAttribute("id", controls!);
 
     await input.fill("lith");
 
+    // Wait for search results before checking the listbox's visibility.
+    const activeOption = palette.getByRole("option").first();
+    await expect(activeOption).toBeVisible();
+    await expect(listbox).toBeVisible();
+
     // The combobox's active descendant must point to a real option in the list.
     const activeId = await input.getAttribute("aria-activedescendant");
     expect(activeId).toBeTruthy();
 
-    const activeOption = page.locator(`[id="${activeId}"]`);
-    await expect(activeOption).toHaveAttribute("role", "option");
-    await expect(activeOption).toHaveAttribute("aria-selected", "true");
+    const referencedOption = page.locator(`[id="${activeId}"]`);
+    await expect(referencedOption).toHaveAttribute("role", "option");
+    await expect(referencedOption).toHaveAttribute("aria-selected", "true");
   });
 
   test("actions rank ahead of chart resources for a clinical search", async ({ page }) => {
