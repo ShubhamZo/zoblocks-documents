@@ -54,8 +54,52 @@ export default defineConfig({
         replacement: path.join(root, "../../registry/zoblocks/timeline/timeline.tsx"),
       },
       {
+        find: /^@\/components\/zoblocks\/clinical-status$/,
+        replacement: path.join(root, "../../registry/zoblocks/clinical-status/clinical-status.tsx"),
+      },
+      {
+        find: /^@\/components\/zoblocks\/accordion$/,
+        replacement: path.join(root, "../../registry/zoblocks/accordion/accordion.tsx"),
+      },
+      {
         find: /^@\/lib\/zoblocks-recorder$/,
         replacement: path.join(root, "../../registry/zoblocks/lib/recorder.tsx"),
+      },
+      {
+        find: /^@\/lib\/zoblocks-trend$/,
+        replacement: path.join(root, "../../registry/zoblocks/lib/trend.ts"),
+      },
+      {
+        find: /^@\/lib\/zoblocks-presence$/,
+        replacement: path.join(root, "../../registry/zoblocks/lib/presence.ts"),
+      },
+      {
+        find: /^@\/lib\/zoblocks-clock$/,
+        replacement: path.join(root, "../../registry/zoblocks/lib/clock.ts"),
+      },
+      {
+        find: /^@\/lib\/zoblocks-chart-header$/,
+        replacement: path.join(root, "../../registry/zoblocks/lib/chart-header.ts"),
+      },
+      {
+        find: /^@\/lib\/zoblocks-provenance$/,
+        replacement: path.join(root, "../../registry/zoblocks/lib/provenance.ts"),
+      },
+      {
+        find: /^@\/lib\/zoblocks-workspace$/,
+        replacement: path.join(root, "../../registry/zoblocks/lib/workspace.ts"),
+      },
+      {
+        find: /^@\/lib\/zoblocks-result-value$/,
+        replacement: path.join(root, "../../registry/zoblocks/lib/result-value.ts"),
+      },
+      {
+        find: /^@\/lib\/zoblocks-risk$/,
+        replacement: path.join(root, "../../registry/zoblocks/lib/risk.ts"),
+      },
+      {
+        find: /^@\/lib\/zoblocks-clinical-note$/,
+        replacement: path.join(root, "../../registry/zoblocks/lib/clinical-note.tsx"),
       },
       {
         find: /^@\/lib\/zoblocks-menu$/,

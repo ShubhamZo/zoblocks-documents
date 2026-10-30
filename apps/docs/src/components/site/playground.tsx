@@ -19,17 +19,69 @@
 
 import * as React from "react";
 import type { Control } from "@zoblocks/component-meta";
-import { allergyList, medicationList, observationPanel } from "@zoblocks/fixtures";
+import {
+  allergyList,
+  medicationList,
+  observationCorrected,
+  observationDeclined,
+  observationMasked,
+  observationPanel,
+  observationPotassiumCritical,
+  observationPreliminary,
+} from "@zoblocks/fixtures";
 import { Tabs, type TabsItemProps, type TabsProps } from "@zoblocks/tabs";
 import { ConfigProvider, Form, theme } from "antd";
 import { Signature, signatureRequired, type SignatureProps } from "@zoblocks/signature";
-import { HostChrome } from "./host-chrome";
-import { PLAYGROUND_COMPONENTS, playgroundChrome } from "./playground-registry";
+import { PLAYGROUND_COMPONENTS } from "./playground-registry";
 import { PulseLoader } from "@/registry/zoblocks/pulse-loader/pulse-loader";
 import { RhythmLoader } from "@/registry/zoblocks/rhythm-loader/rhythm-loader";
 import { BreathLoader } from "@/registry/zoblocks/breath-loader/breath-loader";
 import { HelixLoader } from "@/registry/zoblocks/helix-loader/helix-loader";
 import { InfusionLoader } from "@/registry/zoblocks/infusion-loader/infusion-loader";
+import {
+  TrendIndicator,
+  type TrendSeries,
+} from "@/registry/zoblocks/trend-indicator/trend-indicator";
+import {
+  PresenceChip,
+  type Presence,
+} from "@/registry/zoblocks/care-team-presence/care-team-presence";
+import {
+  ChartHeader,
+  type EncounterOption,
+  type SafetyInput,
+} from "@/registry/zoblocks/chart-header/chart-header";
+import type { Patient } from "@zoblocks/fhir";
+import {
+  ProvenanceChip,
+  type ProvenanceRecord,
+  type StalenessPolicy,
+} from "@/registry/zoblocks/provenance-chip/provenance-chip";
+import {
+  RecentPatientStack,
+  type OpenChart,
+} from "@/registry/zoblocks/recent-patient-stack/recent-patient-stack";
+import { ResultValue, fromObservation } from "@/registry/zoblocks/result-value/result-value";
+import {
+  RiskIndicator,
+  type RiskAssessment,
+} from "@/registry/zoblocks/risk-indicator/risk-indicator";
+import {
+  ChartAccordion,
+  type ChartSection,
+} from "@/registry/zoblocks/chart-accordion/chart-accordion";
+import { SignGate, type NoteAuthor } from "@/registry/zoblocks/clinical-note/clinical-note";
+import type { Finding } from "@zoblocks/clinical-note-core";
+import { SafetyPlan, type SafetyPlanSteps } from "@/registry/zoblocks/safety-plan/safety-plan";
+import { Timeline, type TimelineItemType } from "@/registry/zoblocks/timeline/timeline";
+import { Copilot, type CopilotProps } from "@/registry/zoblocks/copilot/copilot";
+import {
+  createStaticProvider,
+  lookUp,
+  minimalDisclosure,
+  type CopilotEvent,
+  type Source,
+} from "@zoblocks/copilot-core";
 import { Switch, type SwitchProps } from "@/registry/zoblocks/switch/switch";
 import { Accordion } from "@/registry/zoblocks/accordion/accordion";
 import { CHART_ITEMS } from "./accordion-demos";
@@ -146,6 +198,278 @@ function chartFor(mode: string, fixture: string): TabsItemProps[] {
     ...section,
     children: <Filler>{String(section.label)}</Filler>,
   }));
+}
+
+/**
+ * A falling PHQ-9 — five comparable points, so the knobs always have a real
+ * trend to draw. `width`/`height` are the knobs; `series` is fixed, because
+ * picking a series is the same editorial call `accordion`'s fixed items are.
+ */
+const PHQ9_TREND: TrendSeries = {
+  id: "phq9",
+  label: "PHQ-9",
+  valence: "higher-is-worse",
+  significantChange: 5,
+  referenceRange: { low: 0, high: 4 },
+  points: [
+    { at: "2026-03-04T09:00:00Z", value: 21 },
+    { at: "2026-04-04T09:00:00Z", value: 18 },
+    { at: "2026-05-04T09:00:00Z", value: 14 },
+    { at: "2026-06-04T09:00:00Z", value: 11 },
+    { at: "2026-07-04T09:00:00Z", value: 9 },
+  ],
+};
+
+/**
+ * Signed out, with the cover named — the state the component exists to get
+ * right: online, at a desk, and the wrong person to contact.
+ */
+const CTP_PRESENCE: Presence = {
+  clinician: { id: "clin-4", display: "A. Vance, MD", role: "Attending" },
+  state: "signed-out",
+  coveredBy: { id: "clin-1", display: "T. Boateng, MD", role: "Night attending" },
+  until: "07:00",
+};
+
+const CH_PATIENT: Patient = {
+  resourceType: "Patient",
+  id: "syn-ch-1",
+  name: [{ use: "official", family: "Okonkwo", given: ["Amara"] }],
+  birthDate: "1985-03-08",
+  gender: "female",
+  identifier: [
+    { use: "official", system: "http://example.org/fhir/sid/mrn", value: "093-441-208" },
+    { use: "official", system: "https://fhir.nhs.uk/Id/nhs-number", value: "943 476 5919" },
+  ],
+};
+
+const CH_IDENTIFIERS = [{ kind: "mrn" }, { kind: "nhs" }] as const;
+
+const CH_ENCOUNTERS: EncounterOption[] = [
+  { id: "enc-1", label: "Inpatient — Ward 4B", type: "inpatient" },
+  { id: "enc-2", label: "Outpatient — 24 Aug, 09:00", type: "ambulatory" },
+  { id: "enc-3", label: "Telehealth — 24 Aug, 14:00", type: "virtual" },
+];
+
+const CH_SAFETY: SafetyInput = {
+  allergies: { label: "Penicillin — anaphylaxis", tone: "critical", detail: "confirmed" },
+  codeStatus: { label: "DNR" },
+  isolation: { label: "Contact precautions", detail: "MRSA" },
+  legalStatus: { label: "Involuntary hold", until: "2026-08-24T09:00:00Z" },
+};
+
+/** A clinic reading, performed and witnessed — the ordinary, actionable case. */
+const PC_RECORD: ProvenanceRecord = {
+  source: "clinic",
+  observedAt: "2026-08-12T09:48:00Z",
+  performer: { display: "M. Adeyemi", role: "MA" },
+  device: "Welch Allyn 6000",
+};
+
+/** Two days for a device reading, a month for self-report, silence otherwise. */
+const PC_POLICY: StalenessPolicy = (record) => {
+  if (record.source === "device") return 48 * 3_600_000;
+  if (record.source === "patient-reported") return 30 * 86_400_000;
+  return null;
+};
+
+/** Three open charts: one pinned, one with outstanding work, none photographed. */
+const RPS_CHARTS: OpenChart[] = [
+  {
+    id: "chart-okonkwo",
+    display: "A. Okonkwo",
+    identifier: "093-441-208",
+    reason: "Ward round",
+    lastActiveAt: "2026-08-24T09:58:00Z",
+  },
+  {
+    id: "chart-boateng",
+    display: "T. Boateng",
+    identifier: "093-118-774",
+    reason: "Discharge summary",
+    lastActiveAt: "2026-08-24T09:30:00Z",
+    work: [{ kind: "unsigned-note", label: "Progress note", since: "2026-08-21T09:00:00Z" }],
+  },
+  {
+    id: "chart-vance",
+    display: "R. Vance",
+    identifier: "093-004-661",
+    reason: "Med review",
+    pinned: true,
+    lastActiveAt: "2026-08-23T17:00:00Z",
+  },
+];
+
+/**
+ * The `value` knob names a fixture rather than carrying one — same reason
+ * Tabs' `items` knob does — so the renderer resolves the name through
+ * `fromObservation` rather than passing it through.
+ */
+const RESULT_OBSERVATIONS = {
+  observationPotassiumCritical,
+  observationPreliminary,
+  observationCorrected,
+  observationMasked,
+  observationDeclined,
+} as const;
+
+/** A 30-day readmission score, with six drivers so `driverCount` has a real ceiling to reach. */
+const RI_ASSESSMENT: RiskAssessment = {
+  id: "ri1",
+  outcome: "30-day readmission",
+  band: "high",
+  probability: 0.31,
+  percentile: 94,
+  cohort: "adult medicine",
+  computedAt: "2026-08-12T04:12:00Z",
+  validUntil: "2026-08-13T04:12:00Z",
+  drivers: [
+    { label: "3 admissions / 6 mo", weight: 11.2 },
+    { label: "Lives alone", weight: 4.8 },
+    { label: "No PCP visit < 90 d", weight: 3.9 },
+    { label: "Polypharmacy, 9 meds", weight: 2.6 },
+    { label: "ED visit, 14 d", weight: 2.1 },
+    { label: "Adherent to statin", weight: -2.1 },
+  ],
+  model: { name: "Readmit-v4", auc: 0.71 },
+};
+
+const RI_FRAMING =
+  "A statistical estimate from historical patterns. Not a diagnosis, and not a substitute for assessment.";
+
+/** Four sections, two severities and a withheld one, so the toolbar has real work to do. */
+const CA_SECTIONS: ChartSection[] = [
+  {
+    key: "risk",
+    label: "Risk & suicidality",
+    severity: "critical",
+    status: "C-SSRS positive",
+    updatedAt: "2026-08-13",
+    children: <p>Ideation 3 — active thoughts, no plan, no intent, no preparatory behaviour.</p>,
+  },
+  {
+    key: "meds",
+    label: "Medications",
+    severity: "high",
+    status: "Clozapine ANC due 18 Aug",
+    count: "4 active",
+    children: <p>Clozapine 200 mg nocte. ANC due 18 Aug.</p>,
+  },
+  {
+    key: "notes",
+    label: "Progress notes",
+    count: "142 encounters",
+    updatedAt: "2026-08-13",
+    children: <p>BIRP format.</p>,
+  },
+  {
+    key: "psychotherapy",
+    label: "Psychotherapy notes",
+    access: { kind: "withheld", reason: "Kept separately by the author" },
+  },
+];
+
+const CN_AUTHOR: NoteAuthor = { display: "R. Menon, MD", role: "Resident", requiresCosign: true };
+
+/** One block, one warning, one pass — so the gate has real work to summarise either way. */
+const CN_FINDINGS: Finding[] = [
+  {
+    id: "unreviewed-ai",
+    severity: "block",
+    title: "A model-drafted passage has not been reviewed",
+    detail: "History of present illness, second sentence.",
+  },
+  {
+    id: "copy-forward",
+    severity: "warn",
+    title: "32% of this note is copied forward",
+    detail: "From the admission note, 14 Aug.",
+  },
+  { id: "required-sections", severity: "pass", title: "Every required section has content" },
+];
+
+/** The Stanley-Brown six, complete. */
+const SP_STEPS: SafetyPlanSteps = {
+  warningSigns: {
+    entries: ["Sleeping less than four hours", "Not answering messages for two days"],
+  },
+  internalCoping: {
+    entries: ["Walk to the end of the road and back", "Four in, six out, ten times"],
+  },
+  distractions: { entries: ["The cafe on Bell Street before 11am"] },
+  supportContacts: {
+    contacts: [{ name: "Priya", detail: "Sister", availability: "Any time" }],
+  },
+  professionals: {
+    contacts: [
+      { name: "988", detail: "Suicide & Crisis Lifeline", availability: "24 hours" },
+      { name: "County crisis team", detail: "555 0148", availability: "24 hours" },
+    ],
+  },
+  environment: { entries: ["Priya is holding the spare keys to the garage"] },
+};
+
+/** Four admission events, in order. */
+const TL_ITEMS: TimelineItemType[] = [
+  { title: "14 Aug, 08:12", content: "Admitted — ward round" },
+  { title: "14 Aug, 14:30", content: "Hemoglobin 7.1 g/dL, down from 11.8 g/dL" },
+  { title: "15 Aug, 09:00", content: "First unit transfused" },
+  { title: "16 Aug, 14:02", content: "Progress note filed" },
+];
+
+const COPILOT_DISCLOSURE = minimalDisclosure("demo-model@1", {
+  developer: "Zowork",
+  knowledgeCutoff: "2025-10",
+});
+
+const COPILOT_GUIDELINE: Source = {
+  id: "acc-aha-af",
+  title: "2023 ACC/AHA/HRS AF Guideline",
+  passage:
+    "In patients with atrial fibrillation and rapid ventricular response, rate control is a reasonable initial approach for those without severe symptoms.",
+  highlight: [40, 106],
+  kind: "guideline",
+  version: "2023.1",
+  retrievedAt: "2026-08-16T09:00:00.000Z",
+  score: 0.91,
+};
+
+/** A cited, grounded answer — the state the component exists to make routine. */
+const COPILOT_STREAM: CopilotEvent[] = [
+  {
+    type: "delta",
+    text: "Rate control is a reasonable initial approach for most patients without severe symptoms.",
+  },
+  { type: "citation", marker: 1, source: COPILOT_GUIDELINE },
+  { type: "claim", claim: { span: [0, 88], markers: [1] } },
+  { type: "done", finish: "stop" },
+];
+
+/**
+ * `anchor` stays fixed to `inline` here, the same way every Preview scenario
+ * for this component already does: the other two values dock the component
+ * `fixed` to the real viewport edge, which would make it escape the
+ * playground's own stage rather than stay inside it. `suppressed` stays
+ * fixed to `false` for the reason Chart Command Palette's `open` was never a
+ * knob — a prop whose true value means "render nothing" always fails the
+ * walk's survives check for that exact setting, not as a matter of odds.
+ */
+function CopilotPlaygroundDemo(props: Partial<CopilotProps>) {
+  const provider = React.useMemo(
+    () =>
+      createStaticProvider({ events: COPILOT_STREAM, disclosure: COPILOT_DISCLOSURE, delayMs: 90 }),
+    [],
+  );
+  return (
+    <Copilot
+      provider={provider}
+      modes={[lookUp]}
+      actor={{ display: "Dr Amara Okafor", credential: "MD", reference: "Practitioner/7" }}
+      {...props}
+      anchor="inline"
+      suppressed={false}
+    />
+  );
 }
 
 const RENDERERS: Record<string, (props: Props) => React.ReactNode> = {
@@ -295,6 +619,144 @@ const RENDERERS: Record<string, (props: Props) => React.ReactNode> = {
       </Form>
     );
   },
+  "trend-indicator": (props) => (
+    <Centered>
+      <TrendIndicator series={PHQ9_TREND} {...props} />
+    </Centered>
+  ),
+  "care-team-presence": (props) => (
+    <Centered>
+      <PresenceChip presence={CTP_PRESENCE} now="2026-08-24T02:30:00+05:30" {...props} />
+    </Centered>
+  ),
+  /*
+   * `collapsed` only sets the header's starting height — the component owns
+   * the state from then on, same as Accordion's `defaultOpenKeys` — so the
+   * knob needs a remount to be seen, the same `key` trick Switch uses.
+   */
+  "chart-header": (props) => (
+    <ChartHeader
+      key={`${String(props.collapsed ?? false)}-${String(props.surface ?? "overview")}`}
+      patient={CH_PATIENT}
+      identifiers={CH_IDENTIFIERS}
+      now="2026-08-24T10:00:00Z"
+      safety={CH_SAFETY}
+      encounters={CH_ENCOUNTERS}
+      {...props}
+    />
+  ),
+  /*
+   * `now` is a text knob and `Knob` clears it to an explicit `undefined`
+   * rather than omitting the key, which would win over a fixed default
+   * placed before the spread — so it is resolved after, same shape as the
+   * `key` trick above for a prop the spread can't be allowed to blank out.
+   */
+  "provenance-chip": (props) => (
+    <Centered>
+      <ProvenanceChip
+        record={PC_RECORD}
+        stalenessPolicy={PC_POLICY}
+        {...props}
+        now={typeof props.now === "string" && props.now ? props.now : "2026-08-12T10:00:00Z"}
+      />
+    </Centered>
+  ),
+  /*
+   * `expanded` only sets the stack's starting layout — the component owns it
+   * from then on — so the knob remounts it, the same trick Chart Header's
+   * `collapsed` uses.
+   */
+  "recent-patient-stack": (props) => (
+    <RecentPatientStack
+      key={String(props.expanded ?? false)}
+      charts={RPS_CHARTS}
+      activeId="chart-okonkwo"
+      now="2026-08-24T10:00:00Z"
+      {...props}
+    />
+  ),
+  "result-value": (props) => {
+    const { value, now, ...rest } = props as { value?: string; now?: string } & Record<
+      string,
+      unknown
+    >;
+    const observation =
+      RESULT_OBSERVATIONS[value as keyof typeof RESULT_OBSERVATIONS] ??
+      observationPotassiumCritical;
+    return (
+      <Centered>
+        <ResultValue
+          {...rest}
+          value={fromObservation(observation)}
+          now={now ? now : "2026-08-12T10:00:00Z"}
+        />
+      </Centered>
+    );
+  },
+  /*
+   * `now` and `notADiagnosis` are both required props and both text knobs,
+   * so both carry the same clear-to-undefined ordering issue Provenance
+   * Chip's `now` does — resolved the same way, after the spread.
+   */
+  "risk-indicator": (props) => {
+    const { now, notADiagnosis, ...rest } = props as {
+      now?: string;
+      notADiagnosis?: string;
+    } & Record<string, unknown>;
+    return (
+      <Centered>
+        <RiskIndicator
+          assessment={RI_ASSESSMENT}
+          {...rest}
+          now={now ? now : "2026-08-12T10:00:00Z"}
+          notADiagnosis={notADiagnosis ? notADiagnosis : RI_FRAMING}
+        />
+      </Centered>
+    );
+  },
+  "chart-accordion": (props) => (
+    <div className="mx-auto w-full max-w-xl">
+      <ChartAccordion
+        sections={CA_SECTIONS}
+        toolbarLabel="Okonkwo, A. · MRN 4471902"
+        defaultOpenKeys={["risk"]}
+        {...props}
+      />
+    </div>
+  ),
+  /*
+   * SignGate, not the full editor — it is the export `controls` validates
+   * against (the catalogue's "front door" for this component), and the
+   * knob worth having here is the one the gate itself names: whether
+   * policy even permits this author to sign, kept separate from whether
+   * the findings currently allow it.
+   */
+  "clinical-note": (props) => (
+    <div className="mx-auto w-full max-w-md">
+      <SignGate
+        findings={CN_FINDINGS}
+        author={CN_AUTHOR}
+        canSign
+        attestation="I have reviewed this note in its entirety and attest that it accurately reflects the care I provided."
+        {...props}
+      />
+    </div>
+  ),
+  "safety-plan": (props) => (
+    <div className="mx-auto w-full max-w-xl">
+      <SafetyPlan steps={SP_STEPS} revisedAt="2026-08-11" headingLevel={3} {...props} />
+    </div>
+  ),
+  timeline: (props) => (
+    <div className="mx-auto w-full max-w-xl">
+      <Timeline items={TL_ITEMS} aria-label="Admission chronology" {...props} />
+    </div>
+  ),
+  copilot: (props) => (
+    <div className="mx-auto w-full max-w-md">
+      <CopilotPlaygroundDemo {...(props as Partial<CopilotProps>)} />
+    </div>
+  ),
 };
 
 /**
@@ -364,6 +826,40 @@ const FIXED_ATTRS: Record<string, readonly string[] | ((props: Props) => readonl
     "actions={orderActions}",
     'policy={{ role: "a registered nurse", breakGlass: true }}',
     "now={serverTime}",
+  ],
+  "trend-indicator": ["series={phq9}"],
+  "care-team-presence": ["presence={vance}", 'now="2026-08-24T02:30:00+05:30"'],
+  "chart-header": [
+    "patient={patient}",
+    'identifiers={[{ kind: "mrn" }, { kind: "nhs" }]}',
+    'now="2026-08-24T10:00:00Z"',
+    "safety={safety}",
+    "encounters={encounters}",
+  ],
+  "provenance-chip": ["record={record}", "stalenessPolicy={stalenessPolicy}"],
+  "recent-patient-stack": [
+    "charts={charts}",
+    'activeId="chart-okonkwo"',
+    'now="2026-08-24T10:00:00Z"',
+  ],
+  "risk-indicator": ["assessment={assessment}"],
+  "chart-accordion": [
+    "sections={chartSections}",
+    'toolbarLabel="Okonkwo, A. · MRN 4471902"',
+    'defaultOpenKeys={["risk"]}',
+  ],
+  "clinical-note": [
+    "findings={findings}",
+    'author={{ display: "R. Menon, MD", role: "Resident", requiresCosign: true }}',
+    'attestation="I have reviewed this note in its entirety and attest that it accurately reflects the care I provided."',
+  ],
+  "safety-plan": ["steps={steps}", 'revisedAt="2026-08-11"', "headingLevel={3}"],
+  timeline: ["items={items}", 'aria-label="Admission chronology"'],
+  copilot: [
+    "provider={provider}",
+    "modes={[lookUp]}",
+    'actor={{ display: "Dr Amara Okafor", credential: "MD", reference: "Practitioner/7" }}',
+    'anchor="inline"',
   ],
 };
 
@@ -645,7 +1141,6 @@ export function Playground({
   importName,
   importFrom,
   links = [],
-  chrome = false,
 }: {
   name: string;
   controls: readonly Control[];
@@ -654,13 +1149,6 @@ export function Playground({
   /** Where the code imports it from. Defaults to the registry path. */
   importFrom?: string;
   links?: readonly DemoLink[];
-  /**
-   * Draw the host-chrome band — the design language's own buttons, inputs and
-   * tabs — above the component, for the components `playgroundChrome` admits. The
-   * page opts in; a test rendering the playground alone does not, so the band
-   * can never stand in for a component that rendered nothing.
-   */
-  chrome?: boolean;
 }) {
   if (process.env.NODE_ENV !== "production") {
     // The server decides whether to render this section from
@@ -752,15 +1240,6 @@ export function Playground({
             style={dark ? { colorScheme: "dark" } : undefined}
           >
             <div className="flex w-full min-w-0 flex-col gap-6">
-              {/*
-                The real framework, beside the component. Choosing "Ant Design"
-                re-themes the component through the bridge, and this band is
-                antd's own Button, Input and Tabs — what the page owes a reader
-                comparing frameworks, and what a reproduction could not draw.
-                It was the Preview stage's job; the playground took that stage
-                over, so it takes the band too.
-              */}
-              {chrome && playgroundChrome(name) ? <HostChrome /> : null}
               {/*
                 The accent follows the design language. Under "Ant Design" an
                 AA failure in antd's own blue is shown rather than corrected,

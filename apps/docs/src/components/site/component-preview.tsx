@@ -16,7 +16,6 @@
 import * as React from "react";
 import { facesFor } from "@/lib/faces";
 import { HostStage } from "./host-stage";
-import { HostChrome } from "./host-chrome";
 import { CopyButton } from "./code-block";
 import { PageLoader, PulseLoader } from "@/registry/zoblocks/pulse-loader/pulse-loader";
 import { Recorder } from "@/registry/zoblocks/recorder/recorder";
@@ -3989,46 +3988,6 @@ gridCapacityRefusal(120_000);
 const DENSITIES: Density[] = ["patient", "standard", "clinical"];
 
 /**
- * Which previews get a host-chrome band above the component.
- *
- * Not all of them. The five loaders are drawn almost entirely from clinical
- * and motion tokens and take no chrome at all, so a band of buttons above one
- * says nothing about the loader and makes the stage twice as tall. Recorder is
- * the same case: it owns its own transport controls, and a second set beside
- * them reads as part of the component.
- *
- * Everything else earns it, because everything else is something a reader
- * would place inside a form or a toolbar they already own.
- */
-const NO_CHROME = new Set([
-  "pulse-loader",
-  "breath-loader",
-  "helix-loader",
-  "infusion-loader",
-  "rhythm-loader",
-  "recorder",
-  /*
-   * Data Grid is a whole screen, not something placed inside a toolbar.
-   *
-   * It also could not afford the band. The chrome is five stacked blocks —
-   * tabs, three buttons, an input and a select, a switch and a checkbox — and
-   * above a worklist that came to 583px of content in a 384px stage, centred,
-   * which clipped the top of the chrome out of reach and the last table row off
-   * the bottom. The grid re-themes on its own under the language switch (its
-   * type, accent and radius all come off the bridged `--zb-*` values), so
-   * dropping the band costs the reader nothing that switch was showing them.
-   */
-  "data-grid",
-  // Signature returns early above and never consults this list; named here so
-  // the set reads as the complete answer to "which previews show no chrome".
-  "signature",
-]);
-
-function chromeFor(name: string): boolean {
-  return !NO_CHROME.has(name);
-}
-
-/**
  * How tall the rail and the stage are allowed to get, by component.
  *
  * 24rem suits a control demonstrated on its own, and it is what everything
@@ -4353,7 +4312,6 @@ export function ComponentPreview({
               thing it exists to do.
             */}
             <HostStage className="my-auto flex w-full min-w-0 flex-col gap-6">
-              {chromeFor(name) ? <HostChrome /> : null}
               {scenario.render(density)}
             </HostStage>
           </div>
