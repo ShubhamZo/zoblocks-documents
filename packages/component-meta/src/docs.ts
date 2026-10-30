@@ -221,7 +221,6 @@ export const DOCUMENTED_ORDER: readonly string[] = [
   "copilot",
   "provenance-chip",
   "recent-patient-stack",
-  "result-value",
   "risk-indicator",
   "safety-plan",
   "timeline",
