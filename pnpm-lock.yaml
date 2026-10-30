@@ -28,6 +28,8 @@ overrides:
   vite@>=8.2.0 <8.2.4: '>=8.2.4 <8.3'
   launch-editor@<=2.14.1: '>=2.14.2'
   follow-redirects@>=1.16.0 <1.16.1: '>=1.16.1 <2'
+  '@vitest/mocker@>=2.1.0-beta.7 <4.1.12': '>=4.1.12'
+  '@vitest/mocker@>=4.1.11 <4.1.12': '>=4.1.12'
 
 importers:
 
@@ -1552,6 +1554,7 @@ packages:
   '@angular/platform-browser-dynamic@22.1.2':
     resolution: {integrity: sha512-nNARbs9zXfoJL72zsTso6GHt1VuIGXWEpyZtzxcC32qQFG1YbzVqGkQTwZ0mZ2/Ctv8dAZ6PPiDo8sbYvAvUDw==}
     engines: {node: ^22.22.3 || ^24.15.0 || >=26.0.0}
+    deprecated: '@angular/platform-browser-dynamic is deprecated. Use `@angular/platform-browser` instead.'
     peerDependencies:
       '@angular/common': 22.1.2
       '@angular/compiler': 22.1.2
