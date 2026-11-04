@@ -20,7 +20,11 @@
 import * as React from "react";
 import type { Control } from "@zoblocks/component-meta";
 import {
+  allergyHighRisk,
   allergyList,
+  allergyModerate,
+  allergyRefuted,
+  allergyUnconfirmed,
   medicationList,
   observationCorrected,
   observationDeclined,
@@ -38,6 +42,11 @@ import {
   type IdentifierSpec,
   type PatientBannerProps,
 } from "@zoblocks/identity";
+import {
+  AllergyChip,
+  fromAllergyIntolerance,
+  type AllergyRecord,
+} from "@/registry/zoblocks/allergy-chip/allergy-chip";
 import { PLAYGROUND_COMPONENTS } from "./playground-registry";
 import { PulseLoader } from "@/registry/zoblocks/pulse-loader/pulse-loader";
 import { RhythmLoader } from "@/registry/zoblocks/rhythm-loader/rhythm-loader";
@@ -318,6 +327,14 @@ const RESULT_OBSERVATIONS = {
   observationCorrected,
   observationMasked,
   observationDeclined,
+} as const;
+
+/** Same reasoning as `RESULT_OBSERVATIONS`: the `record` knob names a raw fixture, adapted on render. */
+const ALLERGY_INTOLERANCES = {
+  allergyHighRisk,
+  allergyModerate,
+  allergyUnconfirmed,
+  allergyRefuted,
 } as const;
 
 /** A 30-day readmission score, with six drivers so `driverCount` has a real ceiling to reach. */
@@ -732,6 +749,20 @@ const RENDERERS: Record<string, (props: Props) => React.ReactNode> = {
           value={fromObservation(observation)}
           now={now ? now : "2026-08-12T10:00:00Z"}
         />
+      </Centered>
+    );
+  },
+  /** Same reasoning as Result Value's `value` knob: `record` names a fixture rather than carrying one. */
+  "allergy-chip": (props) => {
+    const { record, ...rest } = props as { record?: string } & Props;
+    const intolerance =
+      ALLERGY_INTOLERANCES[record as keyof typeof ALLERGY_INTOLERANCES] ?? allergyHighRisk;
+    // Non-null: `fromAllergyIntolerance` returns null only for a no-known-allergy
+    // code, which none of the four fixture options carry.
+    const adapted = fromAllergyIntolerance(intolerance) as AllergyRecord;
+    return (
+      <Centered>
+        <AllergyChip {...rest} record={adapted} />
       </Centered>
     );
   },
