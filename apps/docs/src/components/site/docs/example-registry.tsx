@@ -43,6 +43,7 @@ import {
   IdentityVerifyDemo,
   IdentityWorklistDemo,
 } from "../identity-demo";
+import * as AllergyDemo from "../allergy-chip-demos";
 
 /* ------------------------------------------------------------------ */
 /* Stand-ins for the host application                                  */
@@ -497,6 +498,13 @@ export const EXAMPLE_PREVIEWS: Readonly<
     verify: () => <IdentityVerifyDemo />,
     disclosure: () => <IdentityDisclosureDemo />,
     guard: () => <IdentityGuardDemo />,
+  },
+
+  "allergy-chip": {
+    "criticality-is-not-severity": () => <AllergyDemo.CriticalityIsNotSeverity />,
+    "two-empty-states": () => <AllergyDemo.TwoEmptyStates />,
+    intolerance: () => <AllergyDemo.Intolerance />,
+    refuted: () => <AllergyDemo.Refuted />,
   },
 };
 
