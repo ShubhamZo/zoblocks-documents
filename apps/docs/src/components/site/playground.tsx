@@ -138,6 +138,33 @@ function PlaygroundSwitch(props: Partial<SwitchProps>) {
   );
 }
 
+/*
+ * `selectedEncounterId` is controlled, and the playground's event handlers only
+ * log that they fired. With nothing holding the choice, the select reverted to
+ * "No encounter selected" on every pick: a control that looks operable and
+ * ignores the person using it. The renderer keeps the selection, as
+ * `PlaygroundSwitch` keeps `checked`, and still reports to the event log.
+ */
+function PlaygroundChartHeader({ onSelectEncounter, ...props }: Props) {
+  const [encounterId, setEncounterId] = React.useState<string | undefined>();
+  const report = onSelectEncounter as ((id: string | undefined) => void) | undefined;
+  return (
+    <ChartHeader
+      patient={CH_PATIENT}
+      identifiers={CH_IDENTIFIERS}
+      now="2026-08-24T10:00:00Z"
+      safety={CH_SAFETY}
+      encounters={CH_ENCOUNTERS}
+      {...props}
+      selectedEncounterId={encounterId}
+      onSelectEncounter={(id) => {
+        setEncounterId(id);
+        report?.(id);
+      }}
+    />
+  );
+}
+
 /** A loader is a mark, not a layout: it sits in the middle of the stage. */
 function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex justify-center">{children}</div>;
@@ -694,13 +721,8 @@ const RENDERERS: Record<string, (props: Props) => React.ReactNode> = {
    * knob needs a remount to be seen, the same `key` trick Switch uses.
    */
   "chart-header": (props) => (
-    <ChartHeader
+    <PlaygroundChartHeader
       key={`${String(props.collapsed ?? false)}-${String(props.surface ?? "overview")}`}
-      patient={CH_PATIENT}
-      identifiers={CH_IDENTIFIERS}
-      now="2026-08-24T10:00:00Z"
-      safety={CH_SAFETY}
-      encounters={CH_ENCOUNTERS}
       {...props}
     />
   ),

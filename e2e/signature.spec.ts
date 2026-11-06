@@ -255,8 +255,12 @@ test.describe("accessibility in a real layout engine", () => {
     // Walk in from the top of the document rather than focusing the button
     // directly — reaching it is half of what is being claimed.
     await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    // The cap only stops a runaway loop; the walk ends as soon as it arrives.
+    // It was 60, and the trigger moved to stop 62 once the sidebar listed
+    // thirty components and the Playground (with its own signature) landed
+    // above this demo — a failure about page growth, not reachability.
     let reached = false;
-    for (let i = 0; i < 60 && !reached; i++) {
+    for (let i = 0; i < 200 && !reached; i++) {
       await page.keyboard.press("Tab");
       reached = await trigger.evaluate((el) => el === document.activeElement);
     }

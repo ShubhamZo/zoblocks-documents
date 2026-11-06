@@ -17046,7 +17046,7 @@ export const CATALOG: ComponentDoc[] = [
         "title": "Underline",
         "description": "The workhorse: more than four items, labels of unequal length, panels that are whole screens. The rail is an inset shadow rather than a border, so the 2px indicator overlaps it exactly at any zoom.",
         "group": "Variants",
-        "code": "<Tabs\n  as=\"tabs\"\n  variant=\"underline\"\n  aria-label=\"Order\"\n  defaultValue=\"summary\"\n  items={[\n    { value: \"summary\", label: \"Summary\", children: <OrderSummary /> },\n    { value: \"lines\", label: \"Line items\", count: 24, children: <LineItems /> },\n    { value: \"ship\", label: \"Shipments\", count: 3, children: <Shipments /> },\n    { value: \"returns\", label: \"Returns\", count: 1, tone: \"high\", children: <Returns /> },\n    { value: \"invoices\", label: \"Invoices\", children: <Invoices /> },\n    { value: \"audit\", label: \"Audit log\", children: <AuditLog /> },\n  ]}\n/>"
+        "code": "<Tabs\n  as=\"tabs\"\n  variant=\"underline\"\n  aria-label=\"Order\"\n  defaultValue=\"summary\"\n  items={[\n    { value: \"summary\", label: \"Summary\", children: <OrderSummary /> },\n    { value: \"lines\", label: \"Line items\", count: 24, children: <LineItems /> },\n    { value: \"ship\", label: \"Shipments\", count: 3, children: <Shipments /> },\n    { value: \"returns\", label: \"Returns\", count: 1, tone: \"high\", children: <Returns /> },\n    { value: \"invoices\", label: \"Invoices\", children: <Invoices /> },\n  ]}\n/>"
       },
       {
         "id": "pill-filters",
